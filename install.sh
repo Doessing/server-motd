@@ -167,14 +167,24 @@ fi
 # ── Configuration prompts ─────────────────────────────────────────────────────
 header "Configuration"
 
-# Pre-fill from existing config on reinstall
+# Pre-fill from existing config on reinstall, but don't override env vars already set
 if [ -f "$CONF_FILE" ]; then
+    # Save any env vars that were pre-set before sourcing config
+    _ENV_TITLE="${MOTD_TITLE:-}"
+    _ENV_NAME="${MOTD_NAME:-}"
+    _ENV_COLOR="${MOTD_COLOR:-}"
+    _ENV_ANIM="${MOTD_ANIM_SECS:-}"
     . "$CONF_FILE"
+    # Restore env vars if they were set (env takes priority over config file)
+    [ -n "$_ENV_TITLE" ] && MOTD_TITLE="$_ENV_TITLE"
+    [ -n "$_ENV_NAME"  ] && MOTD_NAME="$_ENV_NAME"
+    [ -n "$_ENV_COLOR" ] && MOTD_COLOR="$_ENV_COLOR"
+    [ -n "$_ENV_ANIM"  ] && MOTD_ANIM_SECS="$_ENV_ANIM"
     PREV_TITLE="${MOTD_TITLE:-My Server}"
     PREV_NAME="${MOTD_NAME:-}"
     PREV_ANIM="${MOTD_ANIM_SECS:-1}"
 else
-    PREV_TITLE="My Server"; PREV_NAME=""; PREV_ANIM="1"
+    PREV_TITLE="${MOTD_TITLE:-My Server}"; PREV_NAME="${MOTD_NAME:-}"; PREV_ANIM="${MOTD_ANIM_SECS:-1}"
 fi
 
 if $NON_INTERACTIVE; then
