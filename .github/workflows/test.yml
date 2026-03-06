@@ -25,8 +25,6 @@ jobs:
       # ── Patch installer to use local files instead of downloading from GitHub
       - name: Patch installer for local testing
         run: |
-          # Point REPO_RAW to local directory so curl fetches local files via file://
-          # We do this by replacing the curl download calls with cp commands
           sed -i "s|curl -fsSL \"\${REPO_RAW}/motd-banner.sh\" -o \"\$MOTD_SCRIPT\"|cp motd-banner.sh \"\$MOTD_SCRIPT\"|g" install.sh
           sed -i "s|SNIPPET=\$(curl -fsSL \"\${REPO_RAW}/profile-snippet.sh\")|SNIPPET=\$(cat profile-snippet.sh)|g" install.sh
 
@@ -38,24 +36,29 @@ jobs:
       # TEST 1: Fresh install
       # ════════════════════════════════════════════════════════════════════════
       - name: "[Test 1] Fresh install"
-        run: |
-          # Feed answers: title, name, color=1 (blue), anim=1, backup=n
-          printf "Test Server\nTester\n1\n1\nn\n" | sudo bash install.sh
         env:
           SUDO_USER: runner
+          MOTD_MODE: install
+          MOTD_TITLE: "Test Server"
+          MOTD_NAME: "Tester"
+          MOTD_COLOR: blue
+          MOTD_ANIM_SECS: "1"
+          MOTD_BACKUP: "n"
+        run: sudo -E bash install.sh
 
-      - name: "[Test 1] Verify MOTD script installed"
+      - name: "[Test 1] Verify MOTD script installed and executable"
         run: |
           test -f /etc/update-motd.d/01-dynamic-banner || { echo "FAIL: MOTD script missing"; exit 1; }
           test -x /etc/update-motd.d/01-dynamic-banner || { echo "FAIL: MOTD script not executable"; exit 1; }
           echo "PASS: MOTD script installed and executable"
 
-      - name: "[Test 1] Verify config written"
+      - name: "[Test 1] Verify config written correctly"
         run: |
-          test -f /etc/motd-banner.conf || { echo "FAIL: config missing"; exit 1; }
-          grep -q 'MOTD_TITLE="Test Server"' /etc/motd-banner.conf || { echo "FAIL: title not in config"; exit 1; }
-          grep -q 'MOTD_COLOR="blue"'        /etc/motd-banner.conf || { echo "FAIL: color not in config"; exit 1; }
-          echo "PASS: config looks correct"
+          test -f /etc/motd-banner.conf                          || { echo "FAIL: config missing"; exit 1; }
+          grep -q 'MOTD_TITLE="Test Server"' /etc/motd-banner.conf || { echo "FAIL: title wrong"; exit 1; }
+          grep -q 'MOTD_COLOR="blue"'        /etc/motd-banner.conf || { echo "FAIL: color wrong"; exit 1; }
+          grep -q 'MOTD_ANIM_SECS=1'         /etc/motd-banner.conf || { echo "FAIL: anim wrong"; exit 1; }
+          echo "PASS: config correct"
           cat /etc/motd-banner.conf
 
       - name: "[Test 1] Verify profile snippet installed"
@@ -65,7 +68,9 @@ jobs:
 
       - name: "[Test 1] Verify PAM MOTD disabled"
         run: |
-          grep -P '^session.*pam_motd\.so' /etc/pam.d/sshd && { echo "FAIL: PAM MOTD still active"; exit 1; } || true
+          if grep -P '^session.*pam_motd\.so' /etc/pam.d/sshd 2>/dev/null; then
+            echo "FAIL: PAM MOTD still active"; exit 1
+          fi
           echo "PASS: PAM MOTD disabled"
 
       - name: "[Test 1] Verify /etc/motd cleared"
@@ -82,14 +87,17 @@ jobs:
           echo "PASS: MOTD banner ran without error"
 
       # ════════════════════════════════════════════════════════════════════════
-      # TEST 2: Reinstall (update title and color)
+      # TEST 2: Reinstall with new title and color
       # ════════════════════════════════════════════════════════════════════════
-      - name: "[Test 2] Reinstall with new title and color"
-        run: |
-          # Already installed → choice=1 (reinstall), new title, blank name, color=3 (purple), anim=2
-          printf "1\nUpdated Server\n\n3\n2\n" | sudo bash install.sh
+      - name: "[Test 2] Reinstall with updated title and color"
         env:
           SUDO_USER: runner
+          MOTD_MODE: install
+          MOTD_TITLE: "Updated Server"
+          MOTD_NAME: ""
+          MOTD_COLOR: purple
+          MOTD_ANIM_SECS: "2"
+        run: sudo -E bash install.sh
 
       - name: "[Test 2] Verify config updated"
         run: |
@@ -105,20 +113,20 @@ jobs:
           [ "$COUNT" -eq 1 ] || { echo "FAIL: expected 1 snippet, found $COUNT"; exit 1; }
           echo "PASS: exactly one snippet in .profile"
 
-      - name: "[Test 2] Run MOTD banner with new config"
+      - name: "[Test 2] MOTD output contains updated title"
         run: |
-          sudo bash /etc/update-motd.d/01-dynamic-banner | grep -q "Updated Server" || { echo "FAIL: new title not shown in MOTD output"; exit 1; }
+          OUTPUT=$(sudo bash /etc/update-motd.d/01-dynamic-banner 2>/dev/null || true)
+          echo "$OUTPUT" | grep -q "Updated Server" || { echo "FAIL: new title not in MOTD output"; exit 1; }
           echo "PASS: MOTD shows updated title"
 
       # ════════════════════════════════════════════════════════════════════════
-      # TEST 3: Uninstall
+      # TEST 3: Uninstall (no backup)
       # ════════════════════════════════════════════════════════════════════════
       - name: "[Test 3] Uninstall"
-        run: |
-          # Already installed → choice=2 (uninstall)
-          printf "2\n" | sudo bash install.sh
         env:
           SUDO_USER: runner
+          MOTD_MODE: uninstall
+        run: sudo -E bash install.sh
 
       - name: "[Test 3] Verify MOTD script removed"
         run: |
@@ -136,35 +144,39 @@ jobs:
           echo "PASS: snippet removed from .profile"
 
       # ════════════════════════════════════════════════════════════════════════
-      # TEST 4: Fresh install WITH backup, then uninstall restores backup
+      # TEST 4: Fresh install WITH backup, then uninstall restores it
       # ════════════════════════════════════════════════════════════════════════
-      - name: "[Test 4] Seed a dummy existing MOTD script to back up"
+      - name: "[Test 4] Seed a dummy existing MOTD script"
         run: |
           echo '#!/bin/bash' | sudo tee /etc/update-motd.d/99-dummy > /dev/null
           sudo chmod +x /etc/update-motd.d/99-dummy
 
       - name: "[Test 4] Fresh install with backup enabled"
-        run: |
-          printf "Backup Server\n\n1\n1\ny\n" | sudo bash install.sh
         env:
           SUDO_USER: runner
+          MOTD_MODE: install
+          MOTD_TITLE: "Backup Server"
+          MOTD_COLOR: blue
+          MOTD_ANIM_SECS: "1"
+          MOTD_BACKUP: "y"
+        run: sudo -E bash install.sh
 
-      - name: "[Test 4] Verify backup directory created"
+      - name: "[Test 4] Verify backup directory created with dummy script"
         run: |
-          test -d /etc/motd-banner.backup || { echo "FAIL: backup dir missing"; exit 1; }
-          test -f /etc/motd-banner.backup/update-motd.d/99-dummy || { echo "FAIL: dummy MOTD not in backup"; exit 1; }
+          test -d /etc/motd-banner.backup                              || { echo "FAIL: backup dir missing"; exit 1; }
+          test -f /etc/motd-banner.backup/update-motd.d/99-dummy       || { echo "FAIL: dummy script not in backup"; exit 1; }
           echo "PASS: backup created correctly"
           ls /etc/motd-banner.backup/update-motd.d/
 
-      - name: "[Test 4] Uninstall and verify backup restored"
-        run: |
-          printf "2\n" | sudo bash install.sh
+      - name: "[Test 4] Uninstall and restore backup"
         env:
           SUDO_USER: runner
+          MOTD_MODE: uninstall
+        run: sudo -E bash install.sh
 
-      - name: "[Test 4] Verify dummy MOTD script restored"
+      - name: "[Test 4] Verify dummy script restored and backup dir removed"
         run: |
-          test -f /etc/update-motd.d/99-dummy || { echo "FAIL: dummy MOTD not restored"; exit 1; }
-          test -x /etc/update-motd.d/99-dummy || { echo "FAIL: dummy MOTD not executable after restore"; exit 1; }
-          test ! -d /etc/motd-banner.backup   || { echo "FAIL: backup dir not cleaned up"; exit 1; }
+          test -f /etc/update-motd.d/99-dummy  || { echo "FAIL: dummy script not restored"; exit 1; }
+          test -x /etc/update-motd.d/99-dummy  || { echo "FAIL: dummy script not executable after restore"; exit 1; }
+          test ! -d /etc/motd-banner.backup     || { echo "FAIL: backup dir not cleaned up"; exit 1; }
           echo "PASS: backup restored and backup dir removed"

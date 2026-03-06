@@ -25,13 +25,13 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-REAL_USER="${SUDO_USER:-$(logname 2>/dev/null || echo '')}"
+REAL_USER="${SUDO_USER:-$(logname 2>/dev/null || echo 'root')}"
 REAL_HOME=$(getent passwd "$REAL_USER" 2>/dev/null | cut -d: -f6)
 [ -z "$REAL_HOME" ] && REAL_HOME="$HOME"
 PROFILE_FILE="$REAL_HOME/.profile"
 
 # ── Welcome ───────────────────────────────────────────────────────────────────
-clear
+TERM=${TERM:-xterm} clear 2>/dev/null || true
 printf "\n${CY}${B}"
 printf "  ███████╗███████╗██████╗ ██╗   ██╗███████╗██████╗      ███╗   ███╗ ██████╗ ████████╗██████╗ \n"
 printf "  ██╔════╝██╔════╝██╔══██╗██║   ██║██╔════╝██╔══██╗     ████╗ ████║██╔═══██╗╚══██╔══╝██╔══██╗\n"
@@ -49,7 +49,13 @@ if [ -f "$MOTD_SCRIPT" ] || grep -q "$PROFILE_MARKER" "$PROFILE_FILE" 2>/dev/nul
     ALREADY_INSTALLED=true
 fi
 
-if $ALREADY_INSTALLED; then
+# ── Non-interactive mode (CI / env-var driven) ────────────────────────────────
+# Set MOTD_MODE=install|uninstall to skip the menu prompt.
+# Set MOTD_TITLE, MOTD_NAME, MOTD_COLOR, MOTD_ANIM_SECS, MOTD_BACKUP=y|n to skip config prompts.
+NON_INTERACTIVE=false
+[ -n "$MOTD_MODE" ] && NON_INTERACTIVE=true
+
+if $ALREADY_INSTALLED && ! $NON_INTERACTIVE; then
     printf "  ${CY}${B}server-motd is already installed on this machine.${R}\n\n"
     printf "  ${CY}1${R}) Reinstall / Update\n"
     printf "  ${CY}2${R}) Uninstall\n"
@@ -60,8 +66,10 @@ if $ALREADY_INSTALLED; then
         2) MODE="uninstall" ;;
         *) printf "\n  Cancelled.\n\n"; exit 0 ;;
     esac
+elif $ALREADY_INSTALLED && $NON_INTERACTIVE; then
+    MODE="${MOTD_MODE:-install}"
 else
-    MODE="install"
+    MODE="${MOTD_MODE:-install}"
 fi
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -146,10 +154,12 @@ fi
 # ══════════════════════════════════════════════════════════════════════════════
 
 # ── Backup prompt (only on fresh install) ─────────────────────────────────────
-if ! $ALREADY_INSTALLED; then
+if ! $ALREADY_INSTALLED && ! $NON_INTERACTIVE; then
     ask "Backup existing MOTD scripts before installing? [Y/n]: "
     read -r DO_BACKUP </dev/tty
     DO_BACKUP="${DO_BACKUP:-Y}"
+elif ! $ALREADY_INSTALLED && $NON_INTERACTIVE; then
+    DO_BACKUP="${MOTD_BACKUP:-N}"
 else
     DO_BACKUP="N"  # Reinstall: backup already exists (or was never wanted)
 fi
@@ -167,30 +177,37 @@ else
     PREV_TITLE="My Server"; PREV_NAME=""; PREV_ANIM="1"
 fi
 
-read -rp "  Server title (shown as ASCII banner) [${PREV_TITLE}]: " MOTD_TITLE </dev/tty
-MOTD_TITLE="${MOTD_TITLE:-$PREV_TITLE}"
+if $NON_INTERACTIVE; then
+    MOTD_TITLE="${MOTD_TITLE:-$PREV_TITLE}"
+    MOTD_NAME="${MOTD_NAME:-$PREV_NAME}"
+    MOTD_COLOR="${MOTD_COLOR:-blue}"
+    MOTD_ANIM_SECS="${MOTD_ANIM_SECS:-$PREV_ANIM}"
+else
+    read -rp "  Server title (shown as ASCII banner) [${PREV_TITLE}]: " MOTD_TITLE </dev/tty
+    MOTD_TITLE="${MOTD_TITLE:-$PREV_TITLE}"
 
-read -rp "  Your name for welcome message (leave blank to skip) [${PREV_NAME}]: " MOTD_NAME </dev/tty
-MOTD_NAME="${MOTD_NAME:-$PREV_NAME}"
+    read -rp "  Your name for welcome message (leave blank to skip) [${PREV_NAME}]: " MOTD_NAME </dev/tty
+    MOTD_NAME="${MOTD_NAME:-$PREV_NAME}"
 
-echo ""
-printf "  Color theme:\n"
-printf "    ${CY}1${R}) Blue (default)\n"
-printf "    ${CY}2${R}) Green\n"
-printf "    ${CY}3${R}) Purple\n"
-printf "    ${CY}4${R}) Cyan\n"
-printf "    ${CY}5${R}) Orange\n"
-read -rp "  Choose [1-5]: " COLOR_CHOICE </dev/tty
-case "$COLOR_CHOICE" in
-    2) MOTD_COLOR="green"  ;;
-    3) MOTD_COLOR="purple" ;;
-    4) MOTD_COLOR="cyan"   ;;
-    5) MOTD_COLOR="orange" ;;
-    *) MOTD_COLOR="blue"   ;;
-esac
+    echo ""
+    printf "  Color theme:\n"
+    printf "    ${CY}1${R}) Blue (default)\n"
+    printf "    ${CY}2${R}) Green\n"
+    printf "    ${CY}3${R}) Purple\n"
+    printf "    ${CY}4${R}) Cyan\n"
+    printf "    ${CY}5${R}) Orange\n"
+    read -rp "  Choose [1-5]: " COLOR_CHOICE </dev/tty
+    case "$COLOR_CHOICE" in
+        2) MOTD_COLOR="green"  ;;
+        3) MOTD_COLOR="purple" ;;
+        4) MOTD_COLOR="cyan"   ;;
+        5) MOTD_COLOR="orange" ;;
+        *) MOTD_COLOR="blue"   ;;
+    esac
 
-read -rp "  Animation duration in seconds [${PREV_ANIM}]: " MOTD_ANIM_SECS </dev/tty
-MOTD_ANIM_SECS="${MOTD_ANIM_SECS:-$PREV_ANIM}"
+    read -rp "  Animation duration in seconds [${PREV_ANIM}]: " MOTD_ANIM_SECS </dev/tty
+    MOTD_ANIM_SECS="${MOTD_ANIM_SECS:-$PREV_ANIM}"
+fi
 if ! [[ "$MOTD_ANIM_SECS" =~ ^[0-9]+$ ]]; then MOTD_ANIM_SECS=1; fi
 
 # ── Backup existing MOTD ──────────────────────────────────────────────────────
