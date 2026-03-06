@@ -9,6 +9,9 @@ on:
     - cron: '0 6 * * 1'   # Weekly on Monday at 06:00 UTC
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
 
   # ── Scan repo files for hardcoded secrets and shell misconfigurations ────────
@@ -17,14 +20,15 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
+      contents: read
       security-events: write
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
 
       - name: Run Trivy — filesystem scan
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@97e0b3872f55f89b95b2f65b3dbab56962816478  # 0.34.2
         with:
           scan-type: fs
           scan-ref: .
@@ -35,7 +39,7 @@ jobs:
           exit-code: '1'
 
       - name: Upload SARIF to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@820e3160e279568db735cee8ed8f8e77a6da7818  # v3.32.6
         if: always()
         with:
           sarif_file: trivy-fs.sarif
@@ -47,17 +51,18 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
+      contents: read
       security-events: write
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
 
       - name: Install the packages the installer would apt-get
         run: sudo apt-get install -y -qq toilet toilet-fonts dnsutils curl
 
       - name: Run Trivy — OS package CVE scan
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@97e0b3872f55f89b95b2f65b3dbab56962816478  # 0.34.2
         with:
           scan-type: fs
           scan-ref: /
@@ -69,7 +74,7 @@ jobs:
           exit-code: '0'   # informational — runner OS CVEs are not our bug
 
       - name: Upload SARIF to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@820e3160e279568db735cee8ed8f8e77a6da7818  # v3.32.6
         if: always()
         with:
           sarif_file: trivy-os.sarif

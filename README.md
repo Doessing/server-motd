@@ -94,14 +94,17 @@ Every SSH login is logged to `~/.ssh/login_history.log`:
 ```
 .
 ├── .github/
+│   ├── dependabot.yml      # Weekly auto-updates for GitHub Actions
 │   └── workflows/
 │       ├── test.yml        # CI: install, reinstall, uninstall, backup/restore
 │       ├── shellcheck.yml  # Static analysis of all shell scripts
 │       ├── trivy.yml       # Secrets, misconfigs and OS/apt CVE scan
-│       └── gitleaks.yml    # Git history secret scan
+│       ├── gitleaks.yml    # Git history secret scan
+│       └── scorecard.yml   # OpenSSF Scorecard supply-chain security
 ├── install.sh              # Installer (also handles reinstall and uninstall)
 ├── motd-banner.sh          # /etc/update-motd.d/01-dynamic-banner
 ├── profile-snippet.sh      # Prepended to ~/.profile
+├── SECURITY.md             # Vulnerability reporting policy
 └── README.md               # This file
 ```
 
@@ -155,3 +158,4 @@ Every push is scanned automatically by three independent security tools:
 | **ShellCheck** | Static analysis — bugs, unsafe patterns in all shell scripts | [![ShellCheck](https://github.com/Doessing/server-motd/actions/workflows/shellcheck.yml/badge.svg)](https://github.com/Doessing/server-motd/actions/workflows/shellcheck.yml) |
 | **Trivy** | Filesystem secrets, misconfigs and OS/apt package CVEs | [![Trivy](https://github.com/Doessing/server-motd/actions/workflows/trivy.yml/badge.svg)](https://github.com/Doessing/server-motd/actions/workflows/trivy.yml) |
 | **Gitleaks** | Full git history scan — leaked secrets and credentials | [![Gitleaks](https://github.com/Doessing/server-motd/actions/workflows/gitleaks.yml/badge.svg)](https://github.com/Doessing/server-motd/actions/workflows/gitleaks.yml) |
+| **OpenSSF Scorecard** | Supply-chain security posture across ~16 checks | [![Scorecard](https://github.com/Doessing/server-motd/actions/workflows/scorecard.yml/badge.svg)](https://github.com/Doessing/server-motd/actions/workflows/scorecard.yml) |
