@@ -97,9 +97,8 @@ Every SSH login is logged to `~/.ssh/login_history.log`:
 │   └── workflows/
 │       ├── test.yml        # CI: install, reinstall, uninstall, backup/restore
 │       ├── shellcheck.yml  # Static analysis of all shell scripts
-│       ├── trivy.yml       # Filesystem secret & misconfiguration scan
-│       ├── gitleaks.yml    # Git history secret scan
-│       └── snyk.yml        # Vulnerability scan (requires SNYK_TOKEN secret)
+│       ├── trivy.yml       # Secrets, misconfigs and OS/apt CVE scan
+│       └── gitleaks.yml    # Git history secret scan
 ├── install.sh              # Installer (also handles reinstall and uninstall)
 ├── motd-banner.sh          # /etc/update-motd.d/01-dynamic-banner
 ├── profile-snippet.sh      # Prepended to ~/.profile
@@ -154,8 +153,5 @@ Every push is scanned automatically by three independent security tools:
 | Tool | What it checks | Status |
 |------|---------------|--------|
 | **ShellCheck** | Static analysis — bugs, unsafe patterns in all shell scripts | [![ShellCheck](https://github.com/Doessing/server-motd/actions/workflows/shellcheck.yml/badge.svg)](https://github.com/Doessing/server-motd/actions/workflows/shellcheck.yml) |
-| **Trivy** | Filesystem scan — secrets and misconfigurations | [![Trivy](https://github.com/Doessing/server-motd/actions/workflows/trivy.yml/badge.svg)](https://github.com/Doessing/server-motd/actions/workflows/trivy.yml) |
+| **Trivy** | Filesystem secrets, misconfigs and OS/apt package CVEs | [![Trivy](https://github.com/Doessing/server-motd/actions/workflows/trivy.yml/badge.svg)](https://github.com/Doessing/server-motd/actions/workflows/trivy.yml) |
 | **Gitleaks** | Full git history scan — leaked secrets and credentials | [![Gitleaks](https://github.com/Doessing/server-motd/actions/workflows/gitleaks.yml/badge.svg)](https://github.com/Doessing/server-motd/actions/workflows/gitleaks.yml) |
-| **Snyk** | Dependency & vulnerability scan | [![Snyk](https://github.com/Doessing/server-motd/actions/workflows/snyk.yml/badge.svg)](https://github.com/Doessing/server-motd/actions/workflows/snyk.yml) |
-
-> **Snyk**: To enable, add a `SNYK_TOKEN` secret and set the `SNYK_ENABLED` repository variable to `true` in your GitHub repo settings.

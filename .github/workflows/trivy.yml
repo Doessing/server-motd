@@ -10,18 +10,20 @@ on:
   workflow_dispatch:
 
 jobs:
-  trivy:
-    name: Trivy
+
+  # ── Scan repo files for hardcoded secrets and shell misconfigurations ────────
+  trivy-fs:
+    name: "Trivy / Repo (secrets + misconfig)"
     runs-on: ubuntu-latest
 
     permissions:
-      security-events: write   # needed to upload SARIF to GitHub Security tab
+      security-events: write
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Run Trivy — filesystem scan (secrets + misconfigs)
+      - name: Run Trivy — filesystem scan
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: fs
@@ -29,11 +31,46 @@ jobs:
           scanners: secret,misconfig
           severity: MEDIUM,HIGH,CRITICAL
           format: sarif
-          output: trivy-results.sarif
+          output: trivy-fs.sarif
           exit-code: '1'
 
-      - name: Upload Trivy SARIF to GitHub Security tab
+      - name: Upload SARIF to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
-          sarif_file: trivy-results.sarif
+          sarif_file: trivy-fs.sarif
+          category: trivy-fs
+
+  # ── Scan apt packages installed by the installer for known CVEs ──────────────
+  trivy-os:
+    name: "Trivy / OS packages (CVEs)"
+    runs-on: ubuntu-latest
+
+    permissions:
+      security-events: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install the packages the installer would apt-get
+        run: sudo apt-get install -y -qq toilet toilet-fonts dnsutils curl
+
+      - name: Run Trivy — OS package CVE scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: /
+          scanners: vuln
+          vuln-type: os
+          severity: HIGH,CRITICAL
+          format: sarif
+          output: trivy-os.sarif
+          exit-code: '0'   # informational — runner OS CVEs are not our bug
+
+      - name: Upload SARIF to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-os.sarif
+          category: trivy-os
