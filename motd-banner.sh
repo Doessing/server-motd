@@ -36,7 +36,6 @@ fi
 # ── Separator ─────────────────────────────────────────────────────────────────
 COLS=$(TERM=${TERM:-xterm} tput cols 2>/dev/null || echo 80)
 [[ "$COLS" =~ ^[0-9]+$ ]] || COLS=80
-PUB_IP=$(curl -s --max-time 2 https://api.ipify.org 2>/dev/null || echo "n/a")
 SEP_LEN=$(( COLS > 74 ? 74 : COLS - 4 ))
 printf "  ${GR}"; printf '─%.0s' $(seq 1 $SEP_LEN); printf "${RESET}\n"
 
@@ -53,6 +52,7 @@ CPU_COUNT=$(nproc 2>/dev/null || echo "?")
 PRIV_IP=$(ip -4 addr show scope global 2>/dev/null \
     | grep inet | grep -v '172\.' | awk '{print $2}' | cut -d/ -f1 | head -1)
 [ -z "$PRIV_IP" ] && PRIV_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
+PUB_IP=$(curl -s --max-time 2 https://api.ipify.org 2>/dev/null || echo "n/a")
 
 MEM_USED=$(free -h | awk '/^Mem:/ {print $3}')
 MEM_TOTAL=$(free -h | awk '/^Mem:/ {print $2}')
@@ -100,6 +100,7 @@ lbl "Load"       "${WH}${LOAD}${RESET}  ${GR}(${CPU_COUNT} vCPU)${RESET}"
 lbl "Sessions"   "${WH}${USERS}${RESET}${GR} active${RESET}"
 echo ""
 lbl "Private IP" "${WH}${PRIV_IP}${RESET}"
+lbl "Public IP"  "${WH}${PUB_IP}${RESET}"
 echo ""
 lbl "RAM"        "${MEM_BAR}  ${WH}${MEM_USED} / ${MEM_TOTAL}${RESET}  ${GR}(${MEM_PCT}%)${RESET}"
 lbl "Disk (/)"   "${DISK_BAR}  ${WH}${DISK_USED} / ${DISK_TOTAL}${RESET}  ${GR}(${DISK_PCT}%)${RESET}"

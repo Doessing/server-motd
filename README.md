@@ -11,7 +11,7 @@ A dynamic SSH login experience with matrix animation, ASCII banner, system stats
 - 🟩 **Matrix animation** on every SSH login
 - 🔠 **ASCII art banner** with customizable title and colour theme
 - 📊 **Live system info**: hostname, OS, uptime, load, RAM, disk, Docker
-- 🌐 **Public IP** shown on the machine it's installed on
+- 🌐 **Private & public IP** displayed on every login
 - 🔐 **Login history**: IP geolocation, PTR/DNS, ISP and ASN logged per login
 - 💾 **Backup & restore**: backs up your existing MOTD before replacing it
 - 🔄 **Reinstall / Uninstall**: one command, interactive menu
