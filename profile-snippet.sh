@@ -29,8 +29,10 @@ if [ -n "$SSH_TTY" ] && [ -t 1 ]; then
     sleep 1.5
 
     # Matrix animation
-    COLS=$(tput cols 2>/dev/null || echo 80)
-    ROWS=$(tput lines 2>/dev/null || echo 24)
+    COLS=$(TERM=${TERM:-xterm} tput cols 2>/dev/null || echo 80)
+    ROWS=$(TERM=${TERM:-xterm} tput lines 2>/dev/null || echo 24)
+    [[ "$COLS" =~ ^[0-9]+$ ]] || COLS=80
+    [[ "$ROWS" =~ ^[0-9]+$ ]] || ROWS=24
     ANIM_ROWS=$(( ROWS > 20 ? 20 : ROWS - 4 ))
     FRAMES=$(( MOTD_ANIM_SECS * 14 ))  # ~14 frames per second at 0.07s delay
     [ "$FRAMES" -lt 1 ] && FRAMES=1
