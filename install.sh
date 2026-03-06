@@ -43,10 +43,10 @@ printf "  ${GR}https://github.com/Doessing/server-motd${R}\n\n"
 # ── Interactive prompts ───────────────────────────────────────────────────────
 header "Configuration"
 
-read -rp "  Server title (shown as ASCII banner) [My Server]: " MOTD_TITLE
+read -rp "  Server title (shown as ASCII banner) [My Server]: " MOTD_TITLE </dev/tty
 MOTD_TITLE="${MOTD_TITLE:-My Server}"
 
-read -rp "  Your name for welcome message (leave blank to skip): " MOTD_NAME
+read -rp "  Your name for welcome message (leave blank to skip): " MOTD_NAME </dev/tty
 
 echo ""
 printf "  Color theme:\n"
@@ -55,7 +55,7 @@ printf "    ${CY}2${R}) Green\n"
 printf "    ${CY}3${R}) Purple\n"
 printf "    ${CY}4${R}) Cyan\n"
 printf "    ${CY}5${R}) Orange\n"
-read -rp "  Choose [1-5]: " COLOR_CHOICE
+read -rp "  Choose [1-5]: " COLOR_CHOICE </dev/tty
 case "$COLOR_CHOICE" in
     2) MOTD_COLOR="green"  ;;
     3) MOTD_COLOR="purple" ;;
@@ -64,7 +64,7 @@ case "$COLOR_CHOICE" in
     *) MOTD_COLOR="blue"   ;;
 esac
 
-read -rp "  Animation duration in seconds [1]: " MOTD_ANIM_SECS
+read -rp "  Animation duration in seconds [1]: " MOTD_ANIM_SECS </dev/tty
 MOTD_ANIM_SECS="${MOTD_ANIM_SECS:-1}"
 if ! [[ "$MOTD_ANIM_SECS" =~ ^[0-9]+$ ]]; then MOTD_ANIM_SECS=1; fi
 
