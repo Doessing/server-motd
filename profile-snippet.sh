@@ -8,6 +8,7 @@
 # ── Load config ───────────────────────────────────────────────────────────────
 MOTD_COLOR="blue"
 MOTD_ANIM_SECS=1
+# shellcheck source=/dev/null
 [ -f /etc/motd-banner.conf ] && . /etc/motd-banner.conf
 
 # ── Login sequence: hint → animation → MOTD (interactive SSH only) ────────────
@@ -16,6 +17,7 @@ if [ -n "$SSH_TTY" ] && [ -t 1 ]; then
     # Color theme
     RESET=$'\033[0m'
     GR=$'\033[38;5;240m'
+    # shellcheck disable=SC2034  # C2/C3/C4 are used inside string expansions below
     case "$MOTD_COLOR" in
         green)  C2=$'\033[38;5;22m'; C3=$'\033[38;5;34m'; C4=$'\033[38;5;40m'  ;;
         purple) C2=$'\033[38;5;54m'; C3=$'\033[38;5;92m'; C4=$'\033[38;5;99m'  ;;
@@ -38,10 +40,13 @@ if [ -n "$SSH_TTY" ] && [ -t 1 ]; then
     [ "$FRAMES" -lt 1 ] && FRAMES=1
 
     printf '\033[2J\033[H'
+    # shellcheck disable=SC2034  # frame/row/col are counter-only loop variables
     for frame in $(seq 1 $FRAMES); do
         printf '\033[H'
+        # shellcheck disable=SC2034
         for row in $(seq 1 $ANIM_ROWS); do
             line=""
+            # shellcheck disable=SC2034
             for col in $(seq 1 $(( COLS / 3 ))); do
                 case $(( RANDOM % 4 )) in
                     0) line="${line}${C4}▓${RESET} " ;;

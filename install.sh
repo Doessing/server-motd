@@ -174,6 +174,7 @@ if [ -f "$CONF_FILE" ]; then
     _ENV_NAME="${MOTD_NAME:-}"
     _ENV_COLOR="${MOTD_COLOR:-}"
     _ENV_ANIM="${MOTD_ANIM_SECS:-}"
+    # shellcheck source=/dev/null
     . "$CONF_FILE"
     # Restore env vars if they were set (env takes priority over config file)
     [ -n "$_ENV_TITLE" ] && MOTD_TITLE="$_ENV_TITLE"

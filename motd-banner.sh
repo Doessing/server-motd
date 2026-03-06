@@ -9,6 +9,7 @@
 MOTD_TITLE="My Server"
 MOTD_NAME=""
 MOTD_COLOR="blue"
+# shellcheck source=/dev/null
 [ -f /etc/motd-banner.conf ] && . /etc/motd-banner.conf
 
 # ── Color theme ───────────────────────────────────────────────────────────────
@@ -17,6 +18,7 @@ BOLD=$'\033[1m'
 GR=$'\033[38;5;240m'
 WH=$'\033[38;5;255m'
 
+# shellcheck disable=SC2034  # C1/C2/C3/C4 are used inside string expansions below
 case "$MOTD_COLOR" in
     green)  C1=$'\033[38;5;22m';  C2=$'\033[38;5;28m';  C3=$'\033[38;5;34m';  C4=$'\033[38;5;40m'  ;;
     purple) C1=$'\033[38;5;54m';  C2=$'\033[38;5;55m';  C3=$'\033[38;5;92m';  C4=$'\033[38;5;99m'  ;;
@@ -80,8 +82,10 @@ progress_bar() {
     else                         COLOR=$'\033[38;5;196m'
     fi
     local bar="${COLOR}"
+    # shellcheck disable=SC2034  # i is a counter-only loop variable
     for i in $(seq 1 $filled); do bar="${bar}█"; done
     bar="${bar}${GR}"
+    # shellcheck disable=SC2034
     for i in $(seq 1 $empty);  do bar="${bar}░"; done
     printf "%s" "${bar}${RESET}"
 }
