@@ -20,7 +20,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { ubuntu: "20.04", arch: amd64, runner: ubuntu-20.04        }
           - { ubuntu: "22.04", arch: amd64, runner: ubuntu-22.04        }
           - { ubuntu: "24.04", arch: amd64, runner: ubuntu-24.04        }
           - { ubuntu: "24.04", arch: arm64, runner: ubuntu-24.04-arm    }
