@@ -8,17 +8,30 @@ on:
   workflow_dispatch:
 
 jobs:
-  test:
-    name: Install / Reinstall / Uninstall
-    runs-on: ubuntu-latest
+
+  # ══════════════════════════════════════════════════════════════════════════
+  # Ubuntu matrix — native amd64 and arm64 runners
+  # ══════════════════════════════════════════════════════════════════════════
+  test-ubuntu:
+    name: "Ubuntu ${{ matrix.ubuntu }} / ${{ matrix.arch }}"
+    runs-on: ${{ matrix.runner }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { ubuntu: "20.04", arch: amd64, runner: ubuntu-20.04        }
+          - { ubuntu: "22.04", arch: amd64, runner: ubuntu-22.04        }
+          - { ubuntu: "24.04", arch: amd64, runner: ubuntu-24.04        }
+          - { ubuntu: "24.04", arch: arm64, runner: ubuntu-24.04-arm    }
 
     steps:
 
-      # ── Checkout ────────────────────────────────────────────────────────────
+      # ── Checkout ──────────────────────────────────────────────────────────
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ── Make scripts executable ─────────────────────────────────────────────
+      # ── Make scripts executable ───────────────────────────────────────────
       - name: Make scripts executable
         run: chmod +x install.sh motd-banner.sh profile-snippet.sh
 
@@ -28,7 +41,7 @@ jobs:
           sed -i "s|curl -fsSL \"\${REPO_RAW}/motd-banner.sh\" -o \"\$MOTD_SCRIPT\"|cp motd-banner.sh \"\$MOTD_SCRIPT\"|g" install.sh
           sed -i "s|SNIPPET=\$(curl -fsSL \"\${REPO_RAW}/profile-snippet.sh\")|SNIPPET=\$(cat profile-snippet.sh)|g" install.sh
 
-      # ── Install dependencies that the installer would normally apt-get ───────
+      # ── Install dependencies ──────────────────────────────────────────────
       - name: Install dependencies
         run: sudo apt-get install -y -qq toilet toilet-fonts dnsutils
 
@@ -54,7 +67,7 @@ jobs:
 
       - name: "[Test 1] Verify config written correctly"
         run: |
-          test -f /etc/motd-banner.conf                          || { echo "FAIL: config missing"; exit 1; }
+          test -f /etc/motd-banner.conf                             || { echo "FAIL: config missing"; exit 1; }
           grep -q 'MOTD_TITLE="Test Server"' /etc/motd-banner.conf || { echo "FAIL: title wrong"; exit 1; }
           grep -q 'MOTD_COLOR="blue"'        /etc/motd-banner.conf || { echo "FAIL: color wrong"; exit 1; }
           grep -q 'MOTD_ANIM_SECS=1'         /etc/motd-banner.conf || { echo "FAIL: anim wrong"; exit 1; }
@@ -162,8 +175,8 @@ jobs:
 
       - name: "[Test 4] Verify backup directory created with dummy script"
         run: |
-          test -d /etc/motd-banner.backup                              || { echo "FAIL: backup dir missing"; exit 1; }
-          test -f /etc/motd-banner.backup/update-motd.d/99-dummy       || { echo "FAIL: dummy script not in backup"; exit 1; }
+          test -d /etc/motd-banner.backup                        || { echo "FAIL: backup dir missing"; exit 1; }
+          test -f /etc/motd-banner.backup/update-motd.d/99-dummy || { echo "FAIL: dummy script not in backup"; exit 1; }
           echo "PASS: backup created correctly"
           ls /etc/motd-banner.backup/update-motd.d/
 
@@ -175,7 +188,187 @@ jobs:
 
       - name: "[Test 4] Verify dummy script restored and backup dir removed"
         run: |
-          test -f /etc/update-motd.d/99-dummy  || { echo "FAIL: dummy script not restored"; exit 1; }
-          test -x /etc/update-motd.d/99-dummy  || { echo "FAIL: dummy script not executable after restore"; exit 1; }
-          test ! -d /etc/motd-banner.backup     || { echo "FAIL: backup dir not cleaned up"; exit 1; }
+          test -f /etc/update-motd.d/99-dummy || { echo "FAIL: dummy script not restored"; exit 1; }
+          test -x /etc/update-motd.d/99-dummy || { echo "FAIL: dummy script not executable after restore"; exit 1; }
+          test ! -d /etc/motd-banner.backup    || { echo "FAIL: backup dir not cleaned up"; exit 1; }
+          echo "PASS: backup restored and backup dir removed"
+
+  # ══════════════════════════════════════════════════════════════════════════
+  # Debian 12 — via Docker container on ubuntu-latest (amd64)
+  # ══════════════════════════════════════════════════════════════════════════
+  test-debian:
+    name: "Debian 12 / amd64 (Docker)"
+    runs-on: ubuntu-latest
+
+    container:
+      image: debian:12
+      options: --privileged
+
+    steps:
+
+      # ── Bootstrap Debian container ────────────────────────────────────────
+      - name: Bootstrap Debian container
+        run: |
+          apt-get update -qq
+          apt-get install -y -qq curl git sudo toilet toilet-fonts dnsutils procps
+
+      # ── Checkout ──────────────────────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── Make scripts executable ───────────────────────────────────────────
+      - name: Make scripts executable
+        run: chmod +x install.sh motd-banner.sh profile-snippet.sh
+
+      # ── Patch installer to use local files instead of downloading from GitHub
+      - name: Patch installer for local testing
+        run: |
+          sed -i "s|curl -fsSL \"\${REPO_RAW}/motd-banner.sh\" -o \"\$MOTD_SCRIPT\"|cp motd-banner.sh \"\$MOTD_SCRIPT\"|g" install.sh
+          sed -i "s|SNIPPET=\$(curl -fsSL \"\${REPO_RAW}/profile-snippet.sh\")|SNIPPET=\$(cat profile-snippet.sh)|g" install.sh
+
+      # ── Create runner user (containers run as root, installer needs SUDO_USER home)
+      - name: Create runner user
+        run: |
+          useradd -m -s /bin/bash runner
+          echo "runner ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+      # ════════════════════════════════════════════════════════════════════════
+      # TEST 1: Fresh install
+      # ════════════════════════════════════════════════════════════════════════
+      - name: "[Test 1] Fresh install"
+        env:
+          SUDO_USER: runner
+          MOTD_MODE: install
+          MOTD_TITLE: "Test Server"
+          MOTD_NAME: "Tester"
+          MOTD_COLOR: blue
+          MOTD_ANIM_SECS: "1"
+          MOTD_BACKUP: "n"
+        run: bash install.sh
+
+      - name: "[Test 1] Verify MOTD script installed and executable"
+        run: |
+          test -f /etc/update-motd.d/01-dynamic-banner || { echo "FAIL: MOTD script missing"; exit 1; }
+          test -x /etc/update-motd.d/01-dynamic-banner || { echo "FAIL: MOTD script not executable"; exit 1; }
+          echo "PASS: MOTD script installed and executable"
+
+      - name: "[Test 1] Verify config written correctly"
+        run: |
+          test -f /etc/motd-banner.conf                             || { echo "FAIL: config missing"; exit 1; }
+          grep -q 'MOTD_TITLE="Test Server"' /etc/motd-banner.conf || { echo "FAIL: title wrong"; exit 1; }
+          grep -q 'MOTD_COLOR="blue"'        /etc/motd-banner.conf || { echo "FAIL: color wrong"; exit 1; }
+          grep -q 'MOTD_ANIM_SECS=1'         /etc/motd-banner.conf || { echo "FAIL: anim wrong"; exit 1; }
+          echo "PASS: config correct"
+          cat /etc/motd-banner.conf
+
+      - name: "[Test 1] Verify profile snippet installed"
+        run: |
+          grep -q "# ── Login sequence" /home/runner/.profile || { echo "FAIL: snippet missing from .profile"; exit 1; }
+          echo "PASS: snippet present in .profile"
+
+      - name: "[Test 1] Verify /etc/motd cleared"
+        run: |
+          if [ -f /etc/motd ]; then
+            SIZE=$(wc -c < /etc/motd)
+            [ "$SIZE" -eq 0 ] || { echo "FAIL: /etc/motd not empty (${SIZE} bytes)"; exit 1; }
+          fi
+          echo "PASS: /etc/motd is empty or absent"
+
+      - name: "[Test 1] Run MOTD banner script"
+        run: |
+          bash /etc/update-motd.d/01-dynamic-banner
+          echo "PASS: MOTD banner ran without error"
+
+      # ════════════════════════════════════════════════════════════════════════
+      # TEST 2: Reinstall with new title and color
+      # ════════════════════════════════════════════════════════════════════════
+      - name: "[Test 2] Reinstall with updated title and color"
+        env:
+          SUDO_USER: runner
+          MOTD_MODE: install
+          MOTD_TITLE: "Updated Server"
+          MOTD_NAME: ""
+          MOTD_COLOR: purple
+          MOTD_ANIM_SECS: "2"
+        run: bash install.sh
+
+      - name: "[Test 2] Verify config updated"
+        run: |
+          grep -q 'MOTD_TITLE="Updated Server"' /etc/motd-banner.conf || { echo "FAIL: title not updated"; exit 1; }
+          grep -q 'MOTD_COLOR="purple"'          /etc/motd-banner.conf || { echo "FAIL: color not updated"; exit 1; }
+          grep -q 'MOTD_ANIM_SECS=2'             /etc/motd-banner.conf || { echo "FAIL: anim not updated"; exit 1; }
+          echo "PASS: config updated correctly"
+          cat /etc/motd-banner.conf
+
+      - name: "[Test 2] Verify only one snippet in .profile"
+        run: |
+          COUNT=$(grep -c "# ── Login sequence" /home/runner/.profile || true)
+          [ "$COUNT" -eq 1 ] || { echo "FAIL: expected 1 snippet, found $COUNT"; exit 1; }
+          echo "PASS: exactly one snippet in .profile"
+
+      - name: "[Test 2] MOTD banner runs without error after reinstall"
+        run: |
+          bash /etc/update-motd.d/01-dynamic-banner
+          echo "PASS: MOTD banner ran without error with updated config"
+
+      # ════════════════════════════════════════════════════════════════════════
+      # TEST 3: Uninstall (no backup)
+      # ════════════════════════════════════════════════════════════════════════
+      - name: "[Test 3] Uninstall"
+        env:
+          SUDO_USER: runner
+          MOTD_MODE: uninstall
+        run: bash install.sh
+
+      - name: "[Test 3] Verify MOTD script removed"
+        run: |
+          test ! -f /etc/update-motd.d/01-dynamic-banner || { echo "FAIL: MOTD script still present"; exit 1; }
+          echo "PASS: MOTD script removed"
+
+      - name: "[Test 3] Verify config removed"
+        run: |
+          test ! -f /etc/motd-banner.conf || { echo "FAIL: config still present"; exit 1; }
+          echo "PASS: config removed"
+
+      - name: "[Test 3] Verify snippet removed from .profile"
+        run: |
+          grep -q "# ── Login sequence" /home/runner/.profile && { echo "FAIL: snippet still in .profile"; exit 1; } || true
+          echo "PASS: snippet removed from .profile"
+
+      # ════════════════════════════════════════════════════════════════════════
+      # TEST 4: Fresh install WITH backup, then uninstall restores it
+      # ════════════════════════════════════════════════════════════════════════
+      - name: "[Test 4] Seed a dummy existing MOTD script"
+        run: |
+          echo '#!/bin/bash' | tee /etc/update-motd.d/99-dummy > /dev/null
+          chmod +x /etc/update-motd.d/99-dummy
+
+      - name: "[Test 4] Fresh install with backup enabled"
+        env:
+          SUDO_USER: runner
+          MOTD_MODE: install
+          MOTD_TITLE: "Backup Server"
+          MOTD_COLOR: blue
+          MOTD_ANIM_SECS: "1"
+          MOTD_BACKUP: "y"
+        run: bash install.sh
+
+      - name: "[Test 4] Verify backup directory created with dummy script"
+        run: |
+          test -d /etc/motd-banner.backup                        || { echo "FAIL: backup dir missing"; exit 1; }
+          test -f /etc/motd-banner.backup/update-motd.d/99-dummy || { echo "FAIL: dummy script not in backup"; exit 1; }
+          echo "PASS: backup created correctly"
+          ls /etc/motd-banner.backup/update-motd.d/
+
+      - name: "[Test 4] Uninstall and restore backup"
+        env:
+          SUDO_USER: runner
+          MOTD_MODE: uninstall
+        run: bash install.sh
+
+      - name: "[Test 4] Verify dummy script restored and backup dir removed"
+        run: |
+          test -f /etc/update-motd.d/99-dummy || { echo "FAIL: dummy script not restored"; exit 1; }
+          test -x /etc/update-motd.d/99-dummy || { echo "FAIL: dummy script not executable after restore"; exit 1; }
+          test ! -d /etc/motd-banner.backup    || { echo "FAIL: backup dir not cleaned up"; exit 1; }
           echo "PASS: backup restored and backup dir removed"

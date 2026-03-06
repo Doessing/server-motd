@@ -112,7 +112,13 @@ Every SSH login is logged to `~/.ssh/login_history.log`:
 
 ## Tested on
 
-- 🐧 Ubuntu 24.04 LTS (arm64, amd64)
+| OS | Version | Architecture |
+|---|---|---|
+| Ubuntu | 20.04 LTS | amd64 |
+| Ubuntu | 22.04 LTS | amd64 |
+| Ubuntu | 24.04 LTS | amd64 |
+| Ubuntu | 24.04 LTS | arm64 |
+| Debian | 12 | amd64 |
 
 ## CI/CD
 
