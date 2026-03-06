@@ -1,13 +1,20 @@
-# server-motd
+[![Tests](https://github.com/Doessing/server-motd/actions/workflows/test.yml/badge.svg)](https://github.com/Doessing/server-motd/actions/workflows/test.yml)
 
-A dynamic SSH MOTD with matrix animation and login history logging.
+# SERVER-MOTD
 
-**Features:**
-- Matrix-style animation on login
-- ASCII banner with customizable title and color theme
-- Live system info: hostname, OS, uptime, load, RAM, disk, Docker
-- Private IP
-- Login history with IP geolocation, PTR/DNS, ISP and ASN
+A dynamic SSH login experience with matrix animation, ASCII banner, system stats and login history.
+
+🌐 **Install**: `curl -fsSL https://motd.dossing.net/install | sudo bash`
+
+## Features
+
+- 🟩 **Matrix animation** on every SSH login
+- 🔠 **ASCII art banner** with customizable title and colour theme
+- 📊 **Live system info**: hostname, OS, uptime, load, RAM, disk, Docker
+- 🌐 **Public IP** shown on the machine it's installed on
+- 🔐 **Login history**: IP geolocation, PTR/DNS, ISP and ASN logged per login
+- 💾 **Backup & restore**: backs up your existing MOTD before replacing it
+- 🔄 **Reinstall / Uninstall**: one command, interactive menu
 
 ## Install
 
@@ -16,11 +23,14 @@ curl -fsSL https://motd.dossing.net/install | sudo bash
 ```
 
 The installer will ask you:
-- **Server title** – shown as large ASCII art banner
-- **Your name** – optional welcome message
-- **Color theme** – blue, green, purple, cyan or orange
-- **Animation duration** – how many seconds the matrix animation runs
-- **Backup** – whether to back up your existing MOTD before replacing it
+
+| Prompt | Description |
+|--------|-------------|
+| **Server title** | Shown as large ASCII art banner |
+| **Your name** | Optional welcome message |
+| **Color theme** | `blue`, `green`, `purple`, `cyan` or `orange` |
+| **Animation duration** | How many seconds the matrix animation runs |
+| **Backup** | Whether to back up your existing MOTD before replacing it |
 
 ## Reinstall / Update
 
@@ -34,7 +44,7 @@ You will be prompted to choose between **Reinstall/Update**, **Uninstall**, or *
 
 ## Uninstall
 
-Run the install command again and choose **Uninstall**:
+Run the install command and choose **Uninstall**:
 
 ```bash
 curl -fsSL https://motd.dossing.net/install | sudo bash
@@ -79,6 +89,19 @@ Every SSH login is logged to `~/.ssh/login_history.log`:
   AS       : AS1234 Some ISP Inc
 ```
 
+## Project structure
+
+```
+.
+├── .github/
+│   └── workflows/
+│       └── test.yml        # CI: install, reinstall, uninstall, backup/restore
+├── install.sh              # Installer (also handles reinstall and uninstall)
+├── motd-banner.sh          # /etc/update-motd.d/01-dynamic-banner
+├── profile-snippet.sh      # Prepended to ~/.profile
+└── README.md               # This file
+```
+
 ## Files
 
 | File | Destination |
@@ -89,4 +112,19 @@ Every SSH login is logged to `~/.ssh/login_history.log`:
 
 ## Tested on
 
-- Ubuntu 24.04 LTS (arm64, amd64)
+- 🐧 Ubuntu 24.04 LTS (arm64, amd64)
+
+## CI/CD
+
+Push to `main` → GitHub Actions runs 4 tests automatically:
+
+| Test | What it checks |
+|------|---------------|
+| **1. Fresh install** | Script installs, config written, snippet in `.profile`, PAM disabled |
+| **2. Reinstall** | Config updated, no duplicate snippets, banner still runs |
+| **3. Uninstall** | Script removed, config removed, snippet cleaned from `.profile` |
+| **4. Backup + restore** | Backup created on install, restored cleanly on uninstall |
+
+---
+
+**Credits**: Design & development: Anonymous · CI/CD: GitHub Actions
