@@ -122,7 +122,7 @@ Every SSH login is logged to `~/.ssh/login_history.log`:
 
 ## CI/CD
 
-Push to `main` → GitHub Actions runs 4 tests automatically:
+Push to `main` → GitHub Actions runs 4 tests automatically on every environment:
 
 | Test | What it checks |
 |------|---------------|
@@ -130,6 +130,16 @@ Push to `main` → GitHub Actions runs 4 tests automatically:
 | **2. Reinstall** | Config updated, no duplicate snippets, banner still runs |
 | **3. Uninstall** | Script removed, config removed, snippet cleaned from `.profile` |
 | **4. Backup + restore** | Backup created on install, restored cleanly on uninstall |
+
+### Build matrix
+
+| OS | Version | Architecture | Status |
+|----|---------|-------------|--------|
+| Ubuntu | 20.04 | amd64 | [![Ubuntu 20.04 amd64](https://github.com/Doessing/server-motd/actions/workflows/test.yml/badge.svg?job=Ubuntu+20.04+%2F+amd64)](https://github.com/Doessing/server-motd/actions/workflows/test.yml) |
+| Ubuntu | 22.04 | amd64 | [![Ubuntu 22.04 amd64](https://github.com/Doessing/server-motd/actions/workflows/test.yml/badge.svg?job=Ubuntu+22.04+%2F+amd64)](https://github.com/Doessing/server-motd/actions/workflows/test.yml) |
+| Ubuntu | 24.04 | amd64 | [![Ubuntu 24.04 amd64](https://github.com/Doessing/server-motd/actions/workflows/test.yml/badge.svg?job=Ubuntu+24.04+%2F+amd64)](https://github.com/Doessing/server-motd/actions/workflows/test.yml) |
+| Ubuntu | 24.04 | arm64 | [![Ubuntu 24.04 arm64](https://github.com/Doessing/server-motd/actions/workflows/test.yml/badge.svg?job=Ubuntu+24.04+%2F+arm64)](https://github.com/Doessing/server-motd/actions/workflows/test.yml) |
+| Debian | 12 | amd64 | [![Debian 12 amd64](https://github.com/Doessing/server-motd/actions/workflows/test.yml/badge.svg?job=Debian+12+%2F+amd64+%28Docker%29)](https://github.com/Doessing/server-motd/actions/workflows/test.yml) |
 
 ---
 
