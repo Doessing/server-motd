@@ -1,6 +1,7 @@
 #!/bin/bash
 # /etc/update-motd.d/01-dynamic-banner
 # Dynamic MOTD - https://github.com/Doessing/server-motd
+# Author: https://github.com/Doessing
 #
 # Config written by install.sh to /etc/motd-banner.conf
 # Variables: MOTD_TITLE, MOTD_NAME, MOTD_COLOR

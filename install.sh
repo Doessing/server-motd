@@ -1,6 +1,7 @@
 #!/bin/bash
 # server-motd installer
 # https://github.com/Doessing/server-motd
+# Author: https://github.com/Doessing
 
 set -e
 

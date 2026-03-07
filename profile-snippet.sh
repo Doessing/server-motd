@@ -1,6 +1,7 @@
 #!/bin/bash
 # ~/.profile snippet - added by server-motd installer
 # https://github.com/Doessing/server-motd
+# Author: https://github.com/Doessing
 #
 # Config written by install.sh to /etc/motd-banner.conf
 # Variables: MOTD_COLOR, MOTD_ANIM_SECS

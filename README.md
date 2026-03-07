@@ -147,7 +147,7 @@ Push to `main` → GitHub Actions runs 4 tests automatically on every environmen
 
 ---
 
-**Credits**: Design & development: Anonymous · CI/CD: GitHub Actions
+**Author**: [@Doessing](https://github.com/Doessing) · CI/CD: GitHub Actions
 
 ## Security scanning
 
