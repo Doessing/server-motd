@@ -23,34 +23,59 @@ ask()    { printf "  ${CY}?${R} %s" "$1"; }
 # Transliterate non-ASCII to ASCII (toilet renders ASCII only).
 # Uses iconv //TRANSLIT (Ø→O, ü→u, ç→c, etc.) when available,
 # falling back to stripping unrecognised bytes.
+# Captures iconv output before deciding — avoids partial-write + fallback
+# concatenation that would corrupt the result.
 transliterate_ascii() {
-    local input="$1"
+    local input="$1" result
     if command -v iconv &>/dev/null; then
-        printf '%s' "$input" | iconv -f UTF-8 -t ASCII//TRANSLIT 2>/dev/null || \
-            printf '%s' "$input" | tr -cd '[:print:]'
-    else
-        printf '%s' "$input" | tr -cd '[:print:]'
+        result=$(printf '%s' "$input" | iconv -f UTF-8 -t ASCII//TRANSLIT 2>/dev/null)
+        if [ $? -eq 0 ] && [ -n "$result" ]; then
+            printf '%s' "$result"
+            return
+        fi
     fi
+    # Fallback: strip anything outside printable ASCII (0x20–0x7E)
+    printf '%s' "$input" | tr -cd '[:print:]'
+}
+
+# Returns true (0) if the value contains non-ASCII or control characters.
+contains_non_ascii() {
+    # PCRE path: matches bytes 0x80-0xFF only
+    if printf '%s' "$1" | LC_ALL=C grep -qP '[^\x00-\x7F]' 2>/dev/null; then
+        return 0
+    fi
+    # BRE fallback: match bytes outside 0x20-0x7E (same range as tr [:print:])
+    # Uses character class to avoid false-positives on ASCII control chars
+    if printf '%s' "$1" | LC_ALL=C grep -q '[^[:print:]]' 2>/dev/null; then
+        return 0
+    fi
+    return 1
 }
 
 # If input contains non-ASCII, warn and apply transliteration.
-# In interactive mode, show the result and offer to re-enter.
-# In non-interactive mode, apply silently and log a warning.
+# In interactive mode, show the result, then loop until the user provides
+# clean ASCII (or accepts the transliteration). In non-interactive mode,
+# apply silently and log a warning.
 handle_ascii_field() {
-    local value="$1"
-    local converted
-    # Check for any non-ASCII byte
-    if printf '%s' "$value" | LC_ALL=C grep -qP '[^\x00-\x7F]' 2>/dev/null \
-       || printf '%s' "$value" | LC_ALL=C grep -q '[^ -~]' 2>/dev/null; then
+    local value="$1" converted _new
+    if contains_non_ascii "$value"; then
         converted=$(transliterate_ascii "$value")
-        if $NON_INTERACTIVE; then
+        if [ "$NON_INTERACTIVE" = true ]; then
             info "Note: '$value' contains non-ASCII characters — stored as '$converted'"
             printf '%s' "$converted"
         else
             printf "\n  ${RD}Note:${R} toilet only renders ASCII. '%s' → '${B}%s${R}'\n" "$value" "$converted" >&2
-            read -rp "  Use '${converted}' or type a replacement [${converted}]: " _NEW </dev/tty
-            _NEW="${_NEW:-$converted}"
-            printf '%s' "$_NEW"
+            while true; do
+                read -rp "  Use '${converted}' or type a replacement [${converted}]: " _new </dev/tty
+                _new="${_new:-$converted}"
+                if contains_non_ascii "$_new"; then
+                    converted=$(transliterate_ascii "$_new")
+                    printf "  ${RD}Still contains non-ASCII.${R} Transliterated to '${B}%s${R}'\n" "$converted" >&2
+                else
+                    printf '%s' "$_new"
+                    break
+                fi
+            done
         fi
     else
         printf '%s' "$value"
@@ -261,7 +286,7 @@ if ! [[ "$MOTD_ANIM_SECS" =~ ^[0-9]+$ ]]; then MOTD_ANIM_SECS=1; fi
 
 # Handle non-ASCII input — transliterate and warn/prompt as appropriate
 MOTD_TITLE=$(handle_ascii_field "$MOTD_TITLE")
-MOTD_NAME=$(handle_ascii_field  "$MOTD_NAME")
+MOTD_NAME=$(handle_ascii_field "$MOTD_NAME")
 
 # ── Backup existing MOTD ──────────────────────────────────────────────────────
 if [[ "$DO_BACKUP" =~ ^[Yy] ]]; then
