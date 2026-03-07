@@ -349,6 +349,17 @@ if [ -f /etc/pam.d/sshd ]; then
     ok "PAM MOTD disabled"
 fi
 
+# Clear cached dynamic MOTD — stale content lingers in /run/motd.dynamic
+# even after scripts are disabled, and PAM serves it on next login
+if [ -f /run/motd.dynamic ]; then
+    truncate -s 0 /run/motd.dynamic
+    ok "Cleared /run/motd.dynamic"
+fi
+if [ -d /run/motd.d ]; then
+    rm -rf /run/motd.d
+    ok "Cleared /run/motd.d"
+fi
+
 # ── Install MOTD banner script ────────────────────────────────────────────────
 header "Installing MOTD banner"
 curl -fsSL "${REPO_RAW}/motd-banner.sh" -o "$MOTD_SCRIPT"
