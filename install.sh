@@ -20,8 +20,42 @@ info()   { printf "  ${GR}%s${R}\n" "$1"; }
 err()    { printf "  ${RD}✗ %s${R}\n" "$1" >&2; }
 ask()    { printf "  ${CY}?${R} %s" "$1"; }
 
-# Strip non-ASCII bytes (toilet only handles ASCII safely)
-sanitize_ascii() { printf '%s' "$1" | tr -cd '[:print:][:space:]' | tr -d '\000-\010\013\014\016-\037\177'; }
+# Transliterate non-ASCII to ASCII (toilet renders ASCII only).
+# Uses iconv //TRANSLIT (Ø→O, ü→u, ç→c, etc.) when available,
+# falling back to stripping unrecognised bytes.
+transliterate_ascii() {
+    local input="$1"
+    if command -v iconv &>/dev/null; then
+        printf '%s' "$input" | iconv -f UTF-8 -t ASCII//TRANSLIT 2>/dev/null || \
+            printf '%s' "$input" | tr -cd '[:print:]'
+    else
+        printf '%s' "$input" | tr -cd '[:print:]'
+    fi
+}
+
+# If input contains non-ASCII, warn and apply transliteration.
+# In interactive mode, show the result and offer to re-enter.
+# In non-interactive mode, apply silently and log a warning.
+handle_ascii_field() {
+    local value="$1"
+    local converted
+    # Check for any non-ASCII byte
+    if printf '%s' "$value" | LC_ALL=C grep -qP '[^\x00-\x7F]' 2>/dev/null \
+       || printf '%s' "$value" | LC_ALL=C grep -q '[^ -~]' 2>/dev/null; then
+        converted=$(transliterate_ascii "$value")
+        if $NON_INTERACTIVE; then
+            info "Note: '$value' contains non-ASCII characters — stored as '$converted'"
+            printf '%s' "$converted"
+        else
+            printf "\n  ${RD}Note:${R} toilet only renders ASCII. '%s' → '${B}%s${R}'\n" "$value" "$converted" >&2
+            read -rp "  Use '${converted}' or type a replacement [${converted}]: " _NEW </dev/tty
+            _NEW="${_NEW:-$converted}"
+            printf '%s' "$_NEW"
+        fi
+    else
+        printf '%s' "$value"
+    fi
+}
 
 # ── Root check ────────────────────────────────────────────────────────────────
 if [ "$EUID" -ne 0 ]; then
@@ -225,9 +259,9 @@ else
 fi
 if ! [[ "$MOTD_ANIM_SECS" =~ ^[0-9]+$ ]]; then MOTD_ANIM_SECS=1; fi
 
-# Sanitize: toilet renders ASCII only — strip any non-printable / non-ASCII bytes
-MOTD_TITLE=$(sanitize_ascii "$MOTD_TITLE")
-MOTD_NAME=$(sanitize_ascii "$MOTD_NAME")
+# Handle non-ASCII input — transliterate and warn/prompt as appropriate
+MOTD_TITLE=$(handle_ascii_field "$MOTD_TITLE")
+MOTD_NAME=$(handle_ascii_field  "$MOTD_NAME")
 
 # ── Backup existing MOTD ──────────────────────────────────────────────────────
 if [[ "$DO_BACKUP" =~ ^[Yy] ]]; then
