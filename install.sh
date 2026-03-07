@@ -20,6 +20,9 @@ info()   { printf "  ${GR}%s${R}\n" "$1"; }
 err()    { printf "  ${RD}✗ %s${R}\n" "$1" >&2; }
 ask()    { printf "  ${CY}?${R} %s" "$1"; }
 
+# Strip non-ASCII bytes (toilet only handles ASCII safely)
+sanitize_ascii() { printf '%s' "$1" | tr -cd '[:print:][:space:]' | tr -d '\000-\010\013\014\016-\037\177'; }
+
 # ── Root check ────────────────────────────────────────────────────────────────
 if [ "$EUID" -ne 0 ]; then
     err "Run with sudo: curl -fsSL https://motd.dossing.net/install | sudo bash"
@@ -222,6 +225,10 @@ else
 fi
 if ! [[ "$MOTD_ANIM_SECS" =~ ^[0-9]+$ ]]; then MOTD_ANIM_SECS=1; fi
 
+# Sanitize: toilet renders ASCII only — strip any non-printable / non-ASCII bytes
+MOTD_TITLE=$(sanitize_ascii "$MOTD_TITLE")
+MOTD_NAME=$(sanitize_ascii "$MOTD_NAME")
+
 # ── Backup existing MOTD ──────────────────────────────────────────────────────
 if [[ "$DO_BACKUP" =~ ^[Yy] ]]; then
     header "Backing up existing MOTD"
@@ -272,13 +279,9 @@ if [ -f /etc/motd ]; then
     ok "Cleared /etc/motd"
 fi
 
-# Disable default Ubuntu MOTD scripts
-for f in /etc/update-motd.d/00-header \
-          /etc/update-motd.d/60-unminimize \
-          /etc/update-motd.d/85-fwupd \
-          /etc/update-motd.d/91-contract-ua-esm-status \
-          /etc/update-motd.d/92-unattended-upgrades; do
-    [ -f "$f" ] && chmod -x "$f" && info "disabled: $(basename $f)"
+# Disable all other MOTD scripts (everything except our banner)
+for f in /etc/update-motd.d/*; do
+    [ -f "$f" ] && [ "$f" != "$MOTD_SCRIPT" ] && chmod -x "$f" && info "disabled: $(basename "$f")"
 done
 
 # Disable PAM MOTD
