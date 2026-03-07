@@ -39,7 +39,7 @@ transliterate_ascii() {
 }
 
 # Returns true (0) if the value contains non-ASCII or control characters.
-contains_non_ascii() {
+contains_non_printable() {
     # PCRE path: matches bytes 0x80-0xFF only
     if printf '%s' "$1" | LC_ALL=C grep -qP '[^\x00-\x7F]' 2>/dev/null; then
         return 0
@@ -58,7 +58,7 @@ contains_non_ascii() {
 # apply silently and log a warning.
 handle_ascii_field() {
     local value="$1" converted _new
-    if contains_non_ascii "$value"; then
+    if contains_non_printable "$value"; then
         converted=$(transliterate_ascii "$value")
         if [ "$NON_INTERACTIVE" = true ]; then
             info "Note: '$value' contains non-ASCII characters — stored as '$converted'"
@@ -68,7 +68,7 @@ handle_ascii_field() {
             while true; do
                 read -rp "  Use '${converted}' or type a replacement [${converted}]: " _new </dev/tty
                 _new="${_new:-$converted}"
-                if contains_non_ascii "$_new"; then
+                if contains_non_printable "$_new"; then
                     converted=$(transliterate_ascii "$_new")
                     printf "  ${RD}Still contains non-ASCII.${R} Transliterated to '${B}%s${R}'\n" "$converted" >&2
                 else
@@ -118,7 +118,7 @@ fi
 NON_INTERACTIVE=false
 [ -n "$MOTD_MODE" ] && NON_INTERACTIVE=true
 
-if $ALREADY_INSTALLED && ! $NON_INTERACTIVE; then
+if [ "$ALREADY_INSTALLED" = true ] && [ "$NON_INTERACTIVE" != true ]; then
     printf "  ${CY}${B}server-motd is already installed on this machine.${R}\n\n"
     printf "  ${CY}1${R}) Reinstall / Update\n"
     printf "  ${CY}2${R}) Uninstall\n"
@@ -129,7 +129,7 @@ if $ALREADY_INSTALLED && ! $NON_INTERACTIVE; then
         2) MODE="uninstall" ;;
         *) printf "\n  Cancelled.\n\n"; exit 0 ;;
     esac
-elif $ALREADY_INSTALLED && $NON_INTERACTIVE; then
+elif [ "$ALREADY_INSTALLED" = true ] && [ "$NON_INTERACTIVE" = true ]; then
     MODE="${MOTD_MODE:-install}"
 else
     MODE="${MOTD_MODE:-install}"
@@ -217,11 +217,11 @@ fi
 # ══════════════════════════════════════════════════════════════════════════════
 
 # ── Backup prompt (only on fresh install) ─────────────────────────────────────
-if ! $ALREADY_INSTALLED && ! $NON_INTERACTIVE; then
+if [ "$ALREADY_INSTALLED" != true ] && [ "$NON_INTERACTIVE" != true ]; then
     ask "Backup existing MOTD scripts before installing? [Y/n]: "
     read -r DO_BACKUP </dev/tty
     DO_BACKUP="${DO_BACKUP:-Y}"
-elif ! $ALREADY_INSTALLED && $NON_INTERACTIVE; then
+elif [ "$ALREADY_INSTALLED" != true ] && [ "$NON_INTERACTIVE" = true ]; then
     DO_BACKUP="${MOTD_BACKUP:-N}"
 else
     DO_BACKUP="N"  # Reinstall: backup already exists (or was never wanted)
@@ -251,7 +251,7 @@ else
     PREV_TITLE="${MOTD_TITLE:-My Server}"; PREV_NAME="${MOTD_NAME:-}"; PREV_ANIM="${MOTD_ANIM_SECS:-1}"
 fi
 
-if $NON_INTERACTIVE; then
+if [ "$NON_INTERACTIVE" = true ]; then
     MOTD_TITLE="${MOTD_TITLE:-$PREV_TITLE}"
     MOTD_NAME="${MOTD_NAME:-$PREV_NAME}"
     MOTD_COLOR="${MOTD_COLOR:-blue}"
