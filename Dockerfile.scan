@@ -10,4 +10,9 @@ RUN apt-get update \
       toilet-fonts \
       dnsutils \
       curl \
- && rm -rf /var/lib/apt/lists/*
+ && rm -rf /var/lib/apt/lists/* \
+ && useradd --no-create-home --shell /bin/false scanner
+
+# Image is never run — only scanned by Trivy.
+# Non-root USER satisfies DS-0002 (Trivy misconfig rule).
+USER scanner
