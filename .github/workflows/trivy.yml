@@ -39,7 +39,7 @@ jobs:
           exit-code: '1'
 
       - name: Upload SARIF to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@820e3160e279568db735cee8ed8f8e77a6da7818  # v3.32.6
+        uses: github/codeql-action/upload-sarif@0d579ffd059c29b07949a3cce3983f0780820c98  # v4.32.6
         if: always()
         with:
           sarif_file: trivy-fs.sarif
@@ -74,7 +74,7 @@ jobs:
           exit-code: '0'   # informational — runner OS CVEs are not our bug
 
       - name: Upload SARIF to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@820e3160e279568db735cee8ed8f8e77a6da7818  # v3.32.6
+        uses: github/codeql-action/upload-sarif@0d579ffd059c29b07949a3cce3983f0780820c98  # v4.32.6
         if: always()
         with:
           sarif_file: trivy-os.sarif
