@@ -1,0 +1,13 @@
+# Minimal image used only for CVE scanning in CI.
+# Mirrors exactly what install.sh installs via apt-get.
+# Trivy scans this image — not the runner OS — so results are scoped
+# to our actual dependencies only.
+FROM ubuntu:24.04
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      toilet \
+      toilet-fonts \
+      dnsutils \
+      curl \
+ && rm -rf /var/lib/apt/lists/*
