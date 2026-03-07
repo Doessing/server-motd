@@ -9,7 +9,7 @@ REPO_RAW="https://raw.githubusercontent.com/Doessing/server-motd/main"
 CONF_FILE="/etc/motd-banner.conf"
 MOTD_SCRIPT="/etc/update-motd.d/01-dynamic-banner"
 BACKUP_DIR="/etc/motd-banner.backup"
-PROFILE_MARKER="# ── Login sequence"
+PROFILE_MARKER="# ~/.profile snippet - added by server-motd installer"
 
 # ── Colors for installer UI ───────────────────────────────────────────────────
 R=$'\033[0m'; B=$'\033[1m'; CY=$'\033[38;5;45m'; GR=$'\033[38;5;240m'; RD=$'\033[38;5;196m'
@@ -153,9 +153,10 @@ if [ "$MODE" = "uninstall" ]; then
         ok "Removed $CONF_FILE"
     fi
 
-    # Remove profile snippet
+    # Remove profile snippet (full or stub)
     if grep -q "$PROFILE_MARKER" "$PROFILE_FILE" 2>/dev/null; then
-        sed -i "/# ── Login sequence/,/# ── end server-motd/d" "$PROFILE_FILE"
+        sed -i "/# ~\/.profile snippet - added by server-motd installer/,/# ── end server-motd/d" "$PROFILE_FILE"
+        sed -i '/^[[:space:]]*$/{ /./!d }' "$PROFILE_FILE"
         ok "Removed login snippet from $PROFILE_FILE"
     fi
 
@@ -369,9 +370,11 @@ ok "Installed to $MOTD_SCRIPT"
 # ── Install profile snippet ───────────────────────────────────────────────────
 header "Installing login animation + history logger"
 
-# Remove any previous install
+# Remove any previous install (full snippet or leftover stub)
 if grep -q "$PROFILE_MARKER" "$PROFILE_FILE" 2>/dev/null; then
-    sed -i "/# ── Login sequence/,/# ── end server-motd/d" "$PROFILE_FILE"
+    sed -i "/# ~\/.profile snippet - added by server-motd installer/,/# ── end server-motd/d" "$PROFILE_FILE"
+    # Also strip any trailing blank lines left by stub-only installs that had no end marker
+    sed -i '/^[[:space:]]*$/{ /./!d }' "$PROFILE_FILE"
     info "Removed previous snippet from $PROFILE_FILE"
 fi
 
