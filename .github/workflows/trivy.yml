@@ -45,28 +45,40 @@ jobs:
           sarif_file: trivy-fs.sarif
           category: trivy-fs
 
-  # ── Scan apt packages installed by the installer for known CVEs ──────────────
-  trivy-os:
-    name: "Trivy / OS packages (CVEs)"
+  # ── Scan only the packages install.sh uses, in a minimal Docker image ────────
+  # Builds Dockerfile.scan (ubuntu:24.04 + toilet + dnsutils + curl) and scans
+  # that image with Trivy. This scopes CVE results strictly to our dependencies
+  # — no runner OS noise.
+  trivy-deps:
+    name: "Trivy / Dependency CVEs (Docker)"
     runs-on: ubuntu-latest
 
     permissions:
       contents: read
+      security-events: write
 
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
 
-      - name: Install the packages the installer would apt-get
-        run: sudo apt-get install -y -qq toilet toilet-fonts dnsutils curl
+      - name: Build scan image
+        run: docker build -f Dockerfile.scan -t motd-scan:ci .
 
-      - name: Run Trivy — OS package CVE scan
+      - name: Run Trivy — dependency CVE scan
         uses: aquasecurity/trivy-action@97e0b3872f55f89b95b2f65b3dbab56962816478  # 0.34.2
         with:
-          scan-type: fs
-          scan-ref: /
+          scan-type: image
+          image-ref: motd-scan:ci
           scanners: vuln
-          vuln-type: os
+          vuln-type: os,library
           severity: HIGH,CRITICAL
-          format: table   # log output only — SARIF upload removed (exceeds GitHub 5000-result limit)
-          exit-code: '0'  # informational — runner OS CVEs are not our bug
+          format: sarif
+          output: trivy-deps.sarif
+          exit-code: '0'  # informational — upstream package CVEs are not our bug
+
+      - name: Upload SARIF to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@0d579ffd059c29b07949a3cce3983f0780820c98  # v4.32.6
+        if: always()
+        with:
+          sarif_file: trivy-deps.sarif
+          category: trivy-deps
