@@ -52,7 +52,6 @@ jobs:
 
     permissions:
       contents: read
-      security-events: write
 
     steps:
       - name: Checkout
@@ -69,13 +68,5 @@ jobs:
           scanners: vuln
           vuln-type: os
           severity: HIGH,CRITICAL
-          format: sarif
-          output: trivy-os.sarif
-          exit-code: '0'   # informational — runner OS CVEs are not our bug
-
-      - name: Upload SARIF to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@0d579ffd059c29b07949a3cce3983f0780820c98  # v4.32.6
-        if: always()
-        with:
-          sarif_file: trivy-os.sarif
-          category: trivy-os
+          format: table   # log output only — SARIF upload removed (exceeds GitHub 5000-result limit)
+          exit-code: '0'  # informational — runner OS CVEs are not our bug
