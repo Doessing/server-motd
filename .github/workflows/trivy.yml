@@ -40,7 +40,7 @@ jobs:
           limit-severities-for-sarif: true
 
       - name: Upload SARIF to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@0d579ffd059c29b07949a3cce3983f0780820c98  # v4.32.6
+        uses: github/codeql-action/upload-sarif@95e58e9a2cdfd71adc6e0353d5c52f41a045d225  # v4.35.2
         if: always()
         with:
           sarif_file: trivy-fs.sarif
@@ -78,7 +78,7 @@ jobs:
           exit-code: '0'  # informational — upstream package CVEs are not our bug
 
       - name: Upload SARIF to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@0d579ffd059c29b07949a3cce3983f0780820c98  # v4.32.6
+        uses: github/codeql-action/upload-sarif@95e58e9a2cdfd71adc6e0353d5c52f41a045d225  # v4.35.2
         if: always()
         with:
           sarif_file: trivy-deps.sarif
